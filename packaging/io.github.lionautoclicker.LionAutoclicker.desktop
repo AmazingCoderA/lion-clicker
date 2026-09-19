@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Lion AutoClicker
+Name[ru]=Lion Автокликер
+Comment=Configurable cross-platform mouse click automation
+Comment[ru]=Настраиваемая автоматизация кликов мышью
+Exec=lion-autoclicker
+Icon=io.github.lionautoclicker.LionAutoclicker
+Terminal=false
+Categories=Utility;Accessibility;
+Keywords=mouse;click;automation;autoclicker;
+StartupWMClass=lion-autoclicker

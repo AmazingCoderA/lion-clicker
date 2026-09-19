@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.lionautoclicker.LionAutoclicker</id>
+  <name>Lion AutoClicker</name>
+  <summary>Automate mouse clicks with configurable timing and limits</summary>
+  <summary xml:lang="ru">Автоматизация кликов с гибкими интервалами и лимитами</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <description>
+    <p>Lion AutoClicker provides click sequences, bounded timing variation, optional breaks, fixed coordinates, safety limits, and global controls.</p>
+    <p xml:lang="ru">Lion AutoClicker поддерживает серии кликов, ограниченный разброс интервалов, паузы, фиксированную точку, безопасные лимиты и глобальное управление.</p>
+  </description>
+  <launchable type="desktop-id">io.github.lionautoclicker.LionAutoclicker.desktop</launchable>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.1.0" date="2026-09-18">
+      <description><p>Initial cross-platform Rust release.</p></description>
+    </release>
+  </releases>
+</component>

@@ -1,0 +1,1002 @@
+/*
+ * Lion AutoClicker Pro (C# .NET 10 edition) – GPL 3.0
+ * Advanced C# Clicker Engine with anti-detection patterns,
+ * customizable triggers, 10 languages, and robust LOCAL ESCAPE key focus-aware detection.
+ *
+ * Target Framework: .NET 10
+ * Compile command: dotnet publish -c Release -r win-x64 --self-contained
+ */
+
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Threading;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Linq;
+
+// Set console values immediately
+Console.Title = "Lion AutoClicker Pro";
+Console.OutputEncoding = Encoding.UTF8;
+Console.InputEncoding = Encoding.UTF8;
+
+ClickerConfig config = new ClickerConfig();
+Random rng = new Random();
+const string CONFIG_FILE = "settings.txt";
+
+// Keys to listen to during binding
+List<int> ALL_KEYS = new List<int>
+{
+    0x01, 0x02, 0x04, 0x05, 0x06, // LMB, RMB, MMB, X1, X2
+    0x10, 0x11, 0x12, 0x08, 0x09, 0x0D, 0x20, // Shift, Ctrl, Alt, Back, Tab, Enter, Space
+    0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, // PgUp, PgDn, End, Home, Left, Up, Right, Down
+    0x2C, 0x2D, 0x2E, // PrtSc, Ins, Del
+    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, // 0-9
+    0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, // A-M
+    0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, // N-Z
+    0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, // Num0-9
+    0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, // Mult, Add, Sep, Sub, Dec, Div
+    0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A, 0x7B // F1-F12
+};
+
+// Start setup
+if (!File.Exists(CONFIG_FILE))
+{
+    Console.Clear();
+    Console.WriteLine("Welcome to Lion AutoClicker Pro! Please choose your language / Выберите язык:");
+    Console.WriteLine(Translations.LANG["lang_list"][Language.EN]);
+    Console.Write("Enter number (0-9): ");
+    string s = Console.ReadLine() ?? "";
+    if (int.TryParse(s, out int l) && l >= 0 && l < (int)Language.COUNT)
+    {
+        config.language = (Language)l;
+    }
+    SaveConfig();
+}
+else
+{
+    LoadConfig();
+}
+
+ShowMainMenu();
+
+// ============================== Main Engine Loop =================================
+void ShowMainMenu()
+{
+    while (true)
+    {
+        Console.Clear();
+        Console.WriteLine(T("menu_title"));
+        Console.WriteLine($"{T("menu_delay")}   ({config.baseDelay} ms)");
+        Console.WriteLine(T("menu_antidetect"));
+        Console.WriteLine(T("menu_config"));
+        Console.WriteLine($"{T("menu_bind")}   ({GetKeyName(config.triggerKey)} x{config.triggerCount})");
+        Console.WriteLine($"{T("menu_lang")}   ({config.language})");
+        Console.WriteLine(T("menu_help"));
+        Console.WriteLine(T("menu_start"));
+        Console.WriteLine(T("menu_exit"));
+        Console.Write(">> ");
+        string cmd = Console.ReadLine() ?? "";
+
+        if (cmd == "1")
+        {
+            Console.Write($"{T("new_delay")} ");
+            string s = Console.ReadLine() ?? "";
+            if (int.TryParse(s, out int delay))
+            {
+                config.baseDelay = Math.Max(1, delay);
+            }
+            SaveConfig();
+        }
+        else if (cmd == "2")
+        {
+            AntiDetectMenu();
+        }
+        else if (cmd == "3")
+        {
+            string path = Path.GetFullPath(CONFIG_FILE);
+            try
+            {
+                System.Diagnostics.Process.Start("notepad.exe", $"\"{path}\"");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error launching notepad: {ex.Message}");
+                Thread.Sleep(1500);
+            }
+        }
+        else if (cmd == "4")
+        {
+            ChangeBind();
+        }
+        else if (cmd == "5")
+        {
+            LanguageMenu();
+        }
+        else if (cmd == "6")
+        {
+            ShowHelp();
+        }
+        else if (cmd == "7")
+        {
+            RunClickerEngine();
+        }
+        else if (cmd == "0")
+        {
+            Console.WriteLine(T("goodbye"));
+            Environment.Exit(0);
+        }
+    }
+}
+
+void AntiDetectMenu()
+{
+    while (true)
+    {
+        Console.Clear();
+        Console.WriteLine(T("ad_title"));
+        Console.WriteLine($"{T("ad_enable")} [{(config.antiDetect ? "ON" : "OFF")}]");
+        Console.WriteLine($"{T("ad_delay_range")}{config.randomRange} ms");
+        Console.WriteLine($"{T("ad_distribution")}{config.randomDist}");
+        Console.WriteLine($"{T("ad_hold_time")}{config.holdTime} ms");
+        Console.WriteLine($"{T("ad_hold_range")}{config.holdRange} ms");
+        Console.WriteLine($"{T("ad_sim_move")} [{(config.simulateMove ? "ON" : "OFF")}]");
+        Console.WriteLine($"{T("ad_move_radius")}{config.moveRadius} px");
+        Console.WriteLine($"{T("ad_pattern_type")}{config.clickPattern}");
+        Console.WriteLine($"{T("ad_burst_cnt")}{config.burstCount}");
+        Console.WriteLine($"{T("ad_burst_interval")}{config.burstInterval} ms");
+        Console.WriteLine($"{T("ad_burst_range")}{config.burstIntervalRange} ms");
+        Console.WriteLine($"{T("ad_break_enable")} [{(config.randomBreakEnabled ? "ON" : "OFF")}]");
+        Console.WriteLine($"{T("ad_break_prob")}{config.randomBreakProbability}%");
+        Console.WriteLine($"{T("ad_break_min")}{config.randomBreakMin}");
+        Console.WriteLine($"{T("ad_break_max")}{config.randomBreakMax}");
+        Console.WriteLine(T("ad_back"));
+        Console.Write(">> ");
+
+        string cmd = Console.ReadLine() ?? "";
+        if (cmd == "1") config.antiDetect = !config.antiDetect;
+        else if (cmd == "2") { Console.Write($"{T("ad_delay_range")} "); string s = Console.ReadLine() ?? ""; if (int.TryParse(s, out int r)) config.randomRange = Math.Max(0, r); }
+        else if (cmd == "3") { config.randomDist = config.randomDist == RandomDist.Uniform ? RandomDist.Normal : RandomDist.Uniform; }
+        else if (cmd == "4") { Console.Write($"{T("ad_hold_time")} "); string s = Console.ReadLine() ?? ""; if (int.TryParse(s, out int h)) config.holdTime = Math.Max(1, h); }
+        else if (cmd == "5") { Console.Write($"{T("ad_hold_range")} "); string s = Console.ReadLine() ?? ""; if (int.TryParse(s, out int hr)) config.holdRange = Math.Max(0, hr); }
+        else if (cmd == "6") config.simulateMove = !config.simulateMove;
+        else if (cmd == "7") { Console.Write($"{T("ad_move_radius")} "); string s = Console.ReadLine() ?? ""; if (int.TryParse(s, out int mr)) config.moveRadius = Math.Max(0, mr); }
+        else if (cmd == "8") { config.clickPattern = (ClickPattern)(((int)config.clickPattern + 1) % 4); }
+        else if (cmd == "9") { Console.Write($"{T("ad_burst_cnt")} "); string s = Console.ReadLine() ?? ""; if (int.TryParse(s, out int bc)) config.burstCount = Math.Max(1, bc); }
+        else if (cmd == "10") { Console.Write($"{T("ad_burst_interval")} "); string s = Console.ReadLine() ?? ""; if (int.TryParse(s, out int bi)) config.burstInterval = Math.Max(1, bi); }
+        else if (cmd == "11") { Console.Write($"{T("ad_burst_range")} "); string s = Console.ReadLine() ?? ""; if (int.TryParse(s, out int bir)) config.burstIntervalRange = Math.Max(0, bir); }
+        else if (cmd == "12") config.randomBreakEnabled = !config.randomBreakEnabled;
+        else if (cmd == "13") { Console.Write($"{T("ad_break_prob")} "); string s = Console.ReadLine() ?? ""; if (int.TryParse(s, out int p)) config.randomBreakProbability = Math.Max(0, Math.Min(100, p)); }
+        else if (cmd == "14") { Console.Write($"{T("ad_break_min")} "); string s = Console.ReadLine() ?? ""; if (int.TryParse(s, out int bmin)) config.randomBreakMin = Math.Max(1, bmin); }
+        else if (cmd == "15") { Console.Write($"{T("ad_break_max")} "); string s = Console.ReadLine() ?? ""; if (int.TryParse(s, out int bmax)) config.randomBreakMax = Math.Max(config.randomBreakMin, bmax); }
+        else if (cmd == "0") break;
+
+        SaveConfig();
+    }
+}
+
+void ChangeBind()
+{
+    Console.Clear();
+    Console.WriteLine(T("bind_title"));
+    Console.Write($"{T("bind_taps")} ");
+    string taps = Console.ReadLine() ?? "";
+    int count = 1;
+    if (int.TryParse(taps, out int tc))
+    {
+        count = Math.Clamp(tc, 1, 5);
+    }
+
+    Console.Write($"{T("bind_timeout")} ");
+    string timeoutStr = Console.ReadLine() ?? "";
+    if (!string.IsNullOrEmpty(timeoutStr) && int.TryParse(timeoutStr, out int to) && to >= 10)
+    {
+        config.triggerTimeoutMs = to;
+    }
+
+    Console.WriteLine(T("bind_key"));
+    int key = ReadVirtualKey();
+    if (key == -1) return;
+
+    config.triggerKey = key;
+    config.triggerCount = count;
+    SaveConfig();
+
+    Console.WriteLine($"{T("bind_saved")} ({GetKeyName(key)} x{count}, timeout {config.triggerTimeoutMs}ms)");
+    Thread.Sleep(1500);
+}
+
+void LanguageMenu()
+{
+    Console.Clear();
+    Console.WriteLine(T("lang_list"));
+    Console.Write($"{T("lang_select")} ");
+    string s = Console.ReadLine() ?? "";
+    if (int.TryParse(s, out int l) && l >= 0 && l < (int)Language.COUNT)
+    {
+        config.language = (Language)l;
+        SaveConfig();
+    }
+}
+
+void ShowHelp()
+{
+    Console.Clear();
+    Console.Write(T("help_head"));
+    Console.Write(T("help_license"));
+    Console.Write(T("help_disclaimer"));
+    Console.Write(T("help_quick"));
+    Console.Write(T("help_human"));
+    Console.Write(T("help_param"));
+    Console.Write(T("help_tips"));
+    Console.Write(T("help_goodbye"));
+    Console.WriteLine("\nPress any key to return...");
+
+    while (Console.KeyAvailable) Console.ReadKey(true);
+    Console.ReadKey(true);
+}
+
+void RunClickerEngine()
+{
+    Console.Clear();
+    Console.WriteLine($"=== {T("engine_running")} ===");
+    Console.WriteLine($"{T("engine_hotkey")} {GetKeyName(config.triggerKey)} x{config.triggerCount} (timeout {config.triggerTimeoutMs}ms)");
+    Console.WriteLine("---------------------------------------");
+    Console.WriteLine(T("engine_toggle"));
+    Console.WriteLine(T("engine_esc"));
+    Console.WriteLine("---------------------------------------");
+
+    bool active = false;
+    int tapCount = 0;
+    DateTime lastTapTime = DateTime.UtcNow;
+    bool prevKeyState = false;
+
+    // Clear input buffer
+    while (Console.KeyAvailable) Console.ReadKey(true);
+
+    bool CheckEscape()
+    {
+        while (Console.KeyAvailable)
+        {
+            if (Console.ReadKey(true).Key == ConsoleKey.Escape) return true;
+        }
+        return false;
+    }
+
+    bool WaitAndPoll(int ms)
+    {
+        int slept = 0;
+        while (slept < ms)
+        {
+            if (CheckEscape()) return true;
+
+            bool cState = (GetAsyncKeyState(config.triggerKey) & 0x8000) != 0;
+            if (cState && !prevKeyState)
+            {
+                DateTime now = DateTime.UtcNow;
+                double msPassed = (now - lastTapTime).TotalMilliseconds;
+                if (msPassed < config.triggerTimeoutMs) tapCount++;
+                else tapCount = 1;
+                lastTapTime = now;
+
+                if (tapCount >= config.triggerCount)
+                {
+                    active = !active;
+                    Console.WriteLine(active ? T("engine_state_on") : T("engine_state_off"));
+                    tapCount = 0;
+                    prevKeyState = cState;
+                    return false; // Interrupted sleep due to state toggle
+                }
+            }
+            prevKeyState = cState;
+
+            if ((DateTime.UtcNow - lastTapTime).TotalMilliseconds > config.triggerTimeoutMs)
+            {
+                tapCount = 0;
+            }
+
+            int toSleep = Math.Min(10, ms - slept);
+            Thread.Sleep(toSleep);
+            slept += toSleep;
+
+            // If active turned off from another place, break sleep
+            if (!active && ms > 10) return false;
+        }
+        return false;
+    }
+
+    bool PerformSequence()
+    {
+        int holdBase = config.antiDetect ? config.holdTime : 10;
+        int holdRange = config.antiDetect ? config.holdRange : 0;
+        int clicks = 1;
+
+        switch (config.clickPattern)
+        {
+            case ClickPattern.Single: clicks = 1; break;
+            case ClickPattern.Double: clicks = 2; break;
+            case ClickPattern.Triple: clicks = 3; break;
+            case ClickPattern.Burst: clicks = config.burstCount; break;
+        }
+
+        for (int i = 0; i < clicks; ++i)
+        {
+            if (!active) break;
+
+            if (config.simulateMove) CursorMoveRandom(config.moveRadius);
+            int hold = holdBase;
+            if (holdRange > 0) hold += rng.Next(-holdRange, holdRange + 1);
+            if (hold < 1) hold = 1;
+
+            MouseClick(config.clickButton, hold);
+
+            if (i < clicks - 1)
+            {
+                int interval = config.burstInterval;
+                if (config.antiDetect && config.burstIntervalRange > 0)
+                {
+                    interval += rng.Next(-config.burstIntervalRange, config.burstIntervalRange + 1);
+                    if (interval < 1) interval = 1;
+                }
+                if (WaitAndPoll(interval)) return true;
+            }
+        }
+        if (config.simulateMove && active) CursorMoveRandom(config.moveRadius);
+        return false;
+    }
+
+    while (true)
+    {
+        if (WaitAndPoll(10)) return;
+
+        if (active)
+        {
+            if (PerformSequence()) return;
+
+            if (config.antiDetect && config.randomBreakEnabled)
+            {
+                if (rng.Next(0, 100) < config.randomBreakProbability)
+                {
+                    int breakMs = rng.Next(config.randomBreakMin, config.randomBreakMax);
+                    if (WaitAndPoll(breakMs)) return;
+                    if (!active) continue;
+                }
+            }
+
+            int delay = config.baseDelay;
+            if (config.antiDetect)
+            {
+                if (config.randomDist == RandomDist.Uniform)
+                {
+                    delay += rng.Next(-config.randomRange, config.randomRange + 1);
+                }
+                else
+                {
+                    double g = GetNormalRandom(0, config.randomRange / 3.0);
+                    delay += (int)Math.Round(g);
+                }
+                if (delay < 1) delay = 1;
+            }
+
+            if (WaitAndPoll(delay)) return;
+        }
+    }
+}
+
+void MouseClick(ClickType type, int holdMs)
+{
+    uint down, up;
+    switch (type)
+    {
+        case ClickType.Right: down = 0x08; up = 0x10; break;   // R_DOWN, R_UP
+        case ClickType.Middle: down = 0x20; up = 0x40; break;  // M_DOWN, M_UP
+        default: down = 0x02; up = 0x04; break;                // L_DOWN, L_UP
+    }
+
+    mouse_event(down, 0, 0, 0, UIntPtr.Zero);
+    if (holdMs > 0) Thread.Sleep(holdMs);
+    mouse_event(up, 0, 0, 0, UIntPtr.Zero);
+}
+
+void CursorMoveRandom(int radius)
+{
+    if (radius <= 0) return;
+    int dx = rng.Next(-radius, radius + 1);
+    int dy = rng.Next(-radius, radius + 1);
+    mouse_event(0x0001, dx, dy, 0, UIntPtr.Zero); // MOUSEEVENTF_MOVE = 0x0001
+}
+
+int ReadVirtualKey()
+{
+    Console.WriteLine(T("press_key"));
+    bool anyDown = true;
+    while (anyDown)
+    {
+        anyDown = false;
+        foreach (int vk in ALL_KEYS)
+        {
+            if ((GetAsyncKeyState(vk) & 0x8000) != 0) { anyDown = true; break; }
+        }
+        if (anyDown) Thread.Sleep(10);
+    }
+
+    while (Console.KeyAvailable) Console.ReadKey(true);
+
+    while (true)
+    {
+        if (Console.KeyAvailable)
+        {
+            var k = Console.ReadKey(true);
+            if (k.Key == ConsoleKey.Escape) return -1;
+        }
+        foreach (int vk in ALL_KEYS)
+        {
+            if ((GetAsyncKeyState(vk) & 0x8000) != 0)
+            {
+                while ((GetAsyncKeyState(vk) & 0x8000) != 0) Thread.Sleep(10);
+                return vk;
+            }
+        }
+        Thread.Sleep(10);
+    }
+}
+
+double GetNormalRandom(double mean, double stdDev)
+{
+    double u1 = 1.0 - rng.NextDouble();
+    double u2 = 1.0 - rng.NextDouble();
+    double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
+    return mean + stdDev * randStdNormal;
+}
+
+string GetKeyName(int vk)
+{
+    switch (vk)
+    {
+        case 0x01: return "LButton";
+        case 0x02: return "RButton";
+        case 0x04: return "MButton";
+        case 0x05: return "X1";
+        case 0x06: return "X2";
+        case 0x10: return "Shift";
+        case 0x11: return "Ctrl";
+        case 0x12: return "Alt";
+        case 0x08: return "Back";
+        case 0x09: return "Tab";
+        case 0x0D: return "Enter";
+        case 0x20: return "Space";
+        case 0x21: return "PgUp";
+        case 0x22: return "PgDn";
+        case 0x23: return "End";
+        case 0x24: return "Home";
+        case 0x25: return "Left";
+        case 0x26: return "Up";
+        case 0x27: return "Right";
+        case 0x28: return "Down";
+        case 0x2C: return "PrtSc";
+        case 0x2D: return "Ins";
+        case 0x2E: return "Del";
+        default:
+            if (vk >= 0x30 && vk <= 0x39) return ((char)vk).ToString();
+            if (vk >= 0x41 && vk <= 0x5A) return ((char)vk).ToString();
+            if (vk >= 0x60 && vk <= 0x69) return "Num" + (vk - 0x60);
+            if (vk >= 0x70 && vk <= 0x7B) return "F" + (vk - 0x70 + 1);
+            return $"VK_0x{vk:X}";
+    }
+}
+
+string T(string key)
+{
+    if (Translations.LANG.TryGetValue(key, out var dict))
+    {
+        if (dict.TryGetValue(config.language, out var trans)) return trans;
+        if (dict.TryGetValue(Language.EN, out var def)) return def;
+    }
+    return $"???{key}???";
+}
+
+void SaveConfig()
+{
+    try
+    {
+        List<string> lines = new List<string>
+        {
+            $"BaseDelay={config.baseDelay}",
+            $"AntiDetect={(config.antiDetect ? "1" : "0")}",
+            $"RandomRange={config.randomRange}",
+            $"RandomDist={(int)config.randomDist}",
+            $"HoldTime={config.holdTime}",
+            $"HoldRange={config.holdRange}",
+            $"ClickButton={(int)config.clickButton}",
+            $"ClickPattern={(int)config.clickPattern}",
+            $"BurstCount={config.burstCount}",
+            $"BurstInterval={config.burstInterval}",
+            $"BurstIntervalRange={config.burstIntervalRange}",
+            $"SimulateMove={(config.simulateMove ? "1" : "0")}",
+            $"MoveRadius={config.moveRadius}",
+            $"TriggerKey={config.triggerKey}",
+            $"TriggerCount={config.triggerCount}",
+            $"TriggerTimeoutMs={config.triggerTimeoutMs}",
+            $"RandomBreakEnabled={(config.randomBreakEnabled ? "1" : "0")}",
+            $"RandomBreakProbability={config.randomBreakProbability}",
+            $"RandomBreakMin={config.randomBreakMin}",
+            $"RandomBreakMax={config.randomBreakMax}",
+            $"Language={(int)config.language}"
+        };
+        File.WriteAllLines(CONFIG_FILE, lines);
+    }
+    catch { }
+}
+
+void LoadConfig()
+{
+    try
+    {
+        if (!File.Exists(CONFIG_FILE)) return;
+        foreach (var line in File.ReadAllLines(CONFIG_FILE))
+        {
+            var parts = line.Split('=', 2);
+            if (parts.Length < 2) continue;
+            string key = parts[0].Trim();
+            string value = parts[1].Trim();
+
+            try
+            {
+                if (key == "BaseDelay") config.baseDelay = int.Parse(value);
+                else if (key == "AntiDetect") config.antiDetect = value == "1";
+                else if (key == "RandomRange") config.randomRange = int.Parse(value);
+                else if (key == "RandomDist") config.randomDist = (RandomDist)int.Parse(value);
+                else if (key == "HoldTime") config.holdTime = int.Parse(value);
+                else if (key == "HoldRange") config.holdRange = int.Parse(value);
+                else if (key == "ClickButton") config.clickButton = (ClickType)int.Parse(value);
+                else if (key == "ClickPattern") config.clickPattern = (ClickPattern)int.Parse(value);
+                else if (key == "BurstCount") config.burstCount = int.Parse(value);
+                else if (key == "BurstInterval") config.burstInterval = int.Parse(value);
+                else if (key == "BurstIntervalRange") config.burstIntervalRange = int.Parse(value);
+                else if (key == "SimulateMove") config.simulateMove = value == "1";
+                else if (key == "MoveRadius") config.moveRadius = int.Parse(value);
+                else if (key == "TriggerKey") config.triggerKey = int.Parse(value);
+                else if (key == "TriggerCount") config.triggerCount = int.Parse(value);
+                else if (key == "TriggerTimeoutMs") config.triggerTimeoutMs = int.Parse(value);
+                else if (key == "RandomBreakEnabled") config.randomBreakEnabled = value == "1";
+                else if (key == "RandomBreakProbability") config.randomBreakProbability = int.Parse(value);
+                else if (key == "RandomBreakMin") config.randomBreakMin = int.Parse(value);
+                else if (key == "RandomBreakMax") config.randomBreakMax = int.Parse(value);
+                else if (key == "Language") config.language = (Language)int.Parse(value);
+            }
+            catch { }
+        }
+    }
+    catch { }
+}
+
+// ============================== Win32 imports =====================================
+[DllImport("user32.dll")]
+static extern short GetAsyncKeyState(int vKey);
+
+[DllImport("user32.dll")]
+static extern void mouse_event(uint dwFlags, int dx, int dy, uint dwData, UIntPtr dwExtraInfo);
+
+// ============================== Translations Dictionary =========================
+public enum ClickType { Left = 1, Right = 2, Middle = 3 }
+public enum ClickPattern { Single, Double, Triple, Burst }
+public enum RandomDist { Uniform, Normal }
+public enum Language { EN = 0, RU, DE, FR, ES, ZH, JA, KO, PT, IT, COUNT }
+
+public class ClickerConfig
+{
+    public int baseDelay { get; set; } = 40;
+    public bool antiDetect { get; set; } = true;
+    public int randomRange { get; set; } = 15;
+    public RandomDist randomDist { get; set; } = RandomDist.Normal;
+    public int holdTime { get; set; } = 10;
+    public int holdRange { get; set; } = 5;
+    public ClickType clickButton { get; set; } = ClickType.Left;
+    public ClickPattern clickPattern { get; set; } = ClickPattern.Single;
+    public int burstCount { get; set; } = 3;
+    public int burstInterval { get; set; } = 45;
+    public int burstIntervalRange { get; set; } = 0;
+    public bool simulateMove { get; set; } = false;
+    public int moveRadius { get; set; } = 2;
+    public int triggerKey { get; set; } = 0x37; // '7'
+    public int triggerCount { get; set; } = 1;
+    public int triggerTimeoutMs { get; set; } = 400;
+    public bool randomBreakEnabled { get; set; } = false;
+    public int randomBreakProbability { get; set; } = 5;
+    public int randomBreakMin { get; set; } = 200;
+    public int randomBreakMax { get; set; } = 1500;
+    public Language language { get; set; } = Language.EN;
+}
+
+public static class Translations
+{
+    public static readonly Dictionary<string, Dictionary<Language, string>> LANG = new()
+    {
+        ["menu_title"] = new()
+        {
+            [Language.EN] = "=== LION AUTOCLICKER PRO ===",
+            [Language.RU] = "=== LION AUTOCLICKER PRO ===",
+            [Language.DE] = "=== LION AUTOCLICKER PRO ===",
+            [Language.FR] = "=== LION AUTOCLICKER PRO ===",
+            [Language.ES] = "=== LION AUTOCLICKER PRO ===",
+            [Language.ZH] = "=== LION AUTOCLICKER PRO ===",
+            [Language.JA] = "=== LION AUTOCLICKER PRO ===",
+            [Language.KO] = "=== LION AUTOCLICKER PRO ===",
+            [Language.PT] = "=== LION AUTOCLICKER PRO ===",
+            [Language.IT] = "=== LION AUTOCLICKER PRO ==="
+        },
+        ["menu_delay"] = new()
+        {
+            [Language.EN] = "1. Base delay (ms)",
+            [Language.RU] = "1. Базовая задержка (мс)",
+            [Language.DE] = "1. Grundverzögerung",
+            [Language.FR] = "1. Délai de base",
+            [Language.ES] = "1. Retardo base",
+            [Language.ZH] = "1. 基础延迟",
+            [Language.JA] = "1. 基本遅延",
+            [Language.KO] = "1. 기본 지연",
+            [Language.PT] = "1. Atraso base",
+            [Language.IT] = "1. Ritardo base"
+        },
+        ["menu_antidetect"] = new()
+        {
+            [Language.EN] = "2. Anti-detection & Pattern",
+            [Language.RU] = "2. Анти-детект и паттерн",
+            [Language.DE] = "2. Anti-Erkennung & Muster",
+            [Language.FR] = "2. Anti-détection & motif",
+            [Language.ES] = "2. Anti-detección y patrón",
+            [Language.ZH] = "2. 反检测与模式",
+            [Language.JA] = "2. 検出防止＆パターン",
+            [Language.KO] = "2. 감지 방지 및 패턴",
+            [Language.PT] = "2. Anti-detecção e padrão",
+            [Language.IT] = "2. Anti-rilevamento e schema"
+        },
+        ["menu_config"] = new()
+        {
+            [Language.EN] = "3. Edit config file (Notepad)",
+            [Language.RU] = "3. Редактировать конфиг (Блокнот)",
+            [Language.DE] = "3. Konfig öffnen (Notepad)",
+            [Language.FR] = "3. Ouvrir config (Bloc-notes)",
+            [Language.ES] = "3. Editar config (Bloc de notas)",
+            [Language.ZH] = "3. 编辑配置文件 (记事本)",
+            [Language.JA] = "3. 設定ファイル編集 (メモ帳)",
+            [Language.KO] = "3. 설정 파일 편집 (메모장)",
+            [Language.PT] = "3. Editar config (Bloco de Notas)",
+            [Language.IT] = "3. Modifica config (Blocco note)"
+        },
+        ["menu_bind"] = new()
+        {
+            [Language.EN] = "4. Change hotkey (1-5 fast taps)",
+            [Language.RU] = "4. Сменить хоткей (1-5 быстрых нажатий)",
+            [Language.DE] = "4. Hotkey (1-5 schnelle Taps)",
+            [Language.FR] = "4. Changer raccourci (1-5 appuis rapides)",
+            [Language.ES] = "4. Cambiar atajo (1-5 toques rápidos)",
+            [Language.ZH] = "4. 修改热键 (1-5次快速点击)",
+            [Language.JA] = "4. ホットキー変更 (1-5回の高速タップ)",
+            [Language.KO] = "4. 단축키 변경 (1-5회 빠른 탭)",
+            [Language.PT] = "4. Alterar atalho (1-5 toques rápidos)",
+            [Language.IT] = "4. Cambia scorciatoia (1-5 tap veloci)"
+        },
+        ["menu_lang"] = new()
+        {
+            [Language.EN] = "5. Language",
+            [Language.RU] = "5. Язык",
+            [Language.DE] = "5. Sprache",
+            [Language.FR] = "5. Langue",
+            [Language.ES] = "5. Idioma",
+            [Language.ZH] = "5. 语言",
+            [Language.JA] = "5. 言語",
+            [Language.KO] = "5. 언어",
+            [Language.PT] = "5. Idioma",
+            [Language.IT] = "5. Lingua"
+        },
+        ["menu_help"] = new()
+        {
+            [Language.EN] = "6. Help / License",
+            [Language.RU] = "6. Справка / Лицензия",
+            [Language.DE] = "6. Hilfe / Lizenz",
+            [Language.FR] = "6. Aide / Licence",
+            [Language.ES] = "6. Ayuda / Licencia",
+            [Language.ZH] = "6. 帮助 / 许可",
+            [Language.JA] = "6. ヘルプ / ライセンス",
+            [Language.KO] = "6. 도움말 / 라이선스",
+            [Language.PT] = "6. Ajuda / Licença",
+            [Language.IT] = "6. Aiuto / Licenza"
+        },
+        ["menu_start"] = new()
+        {
+            [Language.EN] = "7. Start clicker",
+            [Language.RU] = "7. Запустить кликер",
+            [Language.DE] = "7. Klicker starten",
+            [Language.FR] = "7. Démarrer",
+            [Language.ES] = "7. Iniciar clicker",
+            [Language.ZH] = "7. 启动连点器",
+            [Language.JA] = "7. クリッカー開始",
+            [Language.KO] = "7. 클리кер 시작",
+            [Language.PT] = "7. Iniciar clicker",
+            [Language.IT] = "7. Avvia clicker"
+        },
+        ["menu_exit"] = new()
+        {
+            [Language.EN] = "0. Exit",
+            [Language.RU] = "0. Выход",
+            [Language.DE] = "0. Beenden",
+            [Language.FR] = "0. Quitter",
+            [Language.ES] = "0. Salir",
+            [Language.ZH] = "0. 退出",
+            [Language.JA] = "0. 終了",
+            [Language.KO] = "0. 종료",
+            [Language.PT] = "0. Sair",
+            [Language.IT] = "0. Esci"
+        },
+        ["ad_title"] = new()
+        {
+            [Language.EN] = "Anti-Detection & Pattern Settings",
+            [Language.RU] = "Анти-детект и настройки паттерна"
+        },
+        ["ad_enable"] = new()
+        {
+            [Language.EN] = "1. Enable anti-detection",
+            [Language.RU] = "1. Включить анти-детект"
+        },
+        ["ad_delay_range"] = new()
+        {
+            [Language.EN] = "2. Delay random range: ±",
+            [Language.RU] = "2. Разброс задержки: ±"
+        },
+        ["ad_distribution"] = new()
+        {
+            [Language.EN] = "3. Distribution: ",
+            [Language.RU] = "3. Распределение: "
+        },
+        ["ad_hold_time"] = new()
+        {
+            [Language.EN] = "4. Hold time: ",
+            [Language.RU] = "4. Время удержания: "
+        },
+        ["ad_hold_range"] = new()
+        {
+            [Language.EN] = "5. Hold range: ±",
+            [Language.RU] = "5. Разброс удержания: ±"
+        },
+        ["ad_sim_move"] = new()
+        {
+            [Language.EN] = "6. Simulate cursor move",
+            [Language.RU] = "6. Имитация движения курсора"
+        },
+        ["ad_move_radius"] = new()
+        {
+            [Language.EN] = "7. Move radius: ",
+            [Language.RU] = "7. Радиус движения: "
+        },
+        ["ad_pattern_type"] = new()
+        {
+            [Language.EN] = "8. Click pattern type: ",
+            [Language.RU] = "8. Тип паттерна кликов: "
+        },
+        ["ad_burst_cnt"] = new()
+        {
+            [Language.EN] = "9. Burst count (for Burst): ",
+            [Language.RU] = "9. Количество в пачке (Burst): "
+        },
+        ["ad_burst_interval"] = new()
+        {
+            [Language.EN] = "10. Burst interval (ms): ",
+            [Language.RU] = "10. Интервал пачки (мс): "
+        },
+        ["ad_burst_range"] = new()
+        {
+            [Language.EN] = "11. Burst interval range: ±",
+            [Language.RU] = "11. Разброс интервала пачки: ±"
+        },
+        ["ad_break_enable"] = new()
+        {
+            [Language.EN] = "12. Random breaks",
+            [Language.RU] = "12. Случайные паузы"
+        },
+        ["ad_break_prob"] = new()
+        {
+            [Language.EN] = "13. Break probability (%) ",
+            [Language.RU] = "13. Вероятность паузы (%) "
+        },
+        ["ad_break_min"] = new()
+        {
+            [Language.EN] = "14. Break min (ms): ",
+            [Language.RU] = "14. Мин. пауза (мс): "
+        },
+        ["ad_break_max"] = new()
+        {
+            [Language.EN] = "15. Break max (ms): ",
+            [Language.RU] = "15. Макс. пауза (мс): "
+        },
+        ["ad_back"] = new()
+        {
+            [Language.EN] = "0. Back",
+            [Language.RU] = "0. Назад"
+        },
+        ["bind_title"] = new()
+        {
+            [Language.EN] = "Key Bind Setup",
+            [Language.RU] = "Настройка хоткея"
+        },
+        ["bind_taps"] = new()
+        {
+            [Language.EN] = "How many FAST TAPS to activate? (1-5):",
+            [Language.RU] = "Сколько БЫСТРЫХ НАЖАТИЙ для активации? (1-5):"
+        },
+        ["bind_timeout"] = new()
+        {
+            [Language.EN] = "Timeout between taps (ms) [default 400, Enter = keep]:",
+            [Language.RU] = "Таймаут между нажатиями (мс) [по умолч. 400, Enter = оставить]:"
+        },
+        ["bind_key"] = new()
+        {
+            [Language.EN] = "Now press the key to bind (any key/mouse, incl. Enter):",
+            [Language.RU] = "Теперь нажмите клавишу (любую, включая Enter):"
+        },
+        ["bind_saved"] = new()
+        {
+            [Language.EN] = "New hotkey saved!",
+            [Language.RU] = "Новый хоткей сохранен!"
+        },
+        ["press_key"] = new()
+        {
+            [Language.EN] = "Press the desired key/mouse button (ESC to cancel)...",
+            [Language.RU] = "Нажмите нужную клавишу/кнопку мыши (ESC для отмены)..."
+        },
+        ["new_delay"] = new()
+        {
+            [Language.EN] = "New base delay (ms):",
+            [Language.RU] = "Новая базовая задержка (мс):"
+        },
+        ["engine_running"] = new()
+        {
+            [Language.EN] = "CLICKER ACTIVE - WAITING FOR HOTKEY",
+            [Language.RU] = "КЛИКЕР АКТИВЕН - ОЖИДАНИЕ ХОТКЕЯ"
+        },
+        ["engine_hotkey"] = new()
+        {
+            [Language.EN] = "Hotkey:",
+            [Language.RU] = "Хоткей:"
+        },
+        ["engine_toggle"] = new()
+        {
+            [Language.EN] = "Press hotkey to start/stop",
+            [Language.RU] = "Нажмите хоткей для старта/стопа"
+        },
+        ["engine_esc"] = new()
+        {
+            [Language.EN] = "Press ESC inside console to return to menu",
+            [Language.RU] = "Нажми ESC внутри консоли для возврата в меню"
+        },
+        ["engine_state_on"] = new()
+        {
+            [Language.EN] = "[ON] Working...",
+            [Language.RU] = "[ON] Работает..."
+        },
+        ["engine_state_off"] = new()
+        {
+            [Language.EN] = "[OFF] Paused",
+            [Language.RU] = "[OFF] Пауза"
+        },
+        ["lang_select"] = new()
+        {
+            [Language.EN] = "Select language (0-9):",
+            [Language.RU] = "Выберите язык (0-9):"
+        },
+        ["lang_list"] = new()
+        {
+            [Language.EN] = "0:English 1:Русский 2:Deutsch 3:Français 4:Español 5:中文 6:日本語 7:한국어 8:Português 9:Italiano",
+            [Language.RU] = "0:English 1:Русский 2:Deutsch 3:Français 4:Español 5:中文 6:日本語 7:한국어 8:Português 9:Italiano"
+        },
+        ["goodbye"] = new()
+        {
+            [Language.EN] = "Have a nice day!",
+            [Language.RU] = "Хорошего дня!"
+        },
+        ["help_head"] = new()
+        {
+            [Language.EN] = "=== HELP & LICENSE ===\nGNU General Public License v3.0\n",
+            [Language.RU] = "=== СПРАВКА И ЛИЦЕНЗИЯ ===\nGNU General Public License v3.0\n"
+        },
+        ["help_license"] = new()
+        {
+            [Language.EN] = "Full license: https://www.gnu.org/licenses/gpl-3.0.html\n",
+            [Language.RU] = "Полный текст: https://www.gnu.org/licenses/gpl-3.0.html\n"
+        },
+        ["help_disclaimer"] = new()
+        {
+            [Language.EN] = "This software is created for SCIENTIFIC AND EDUCATIONAL PURPOSES ONLY.\nThe author is NOT responsible for any misuse or account bans.\n\n",
+            [Language.RU] = "ПО создано ИСКЛЮЧИТЕЛЬНО В НАУЧНЫХ И ОБРАЗОВАТЕЛЬНЫХ ЦЕЛЯХ.\nАвтор НЕ несет ответственности за неправомерное использование или баны.\n\n"
+        },
+        ["help_quick"] = new()
+        {
+            [Language.EN] = "--- QUICK START ---\n" +
+                            "- Default hotkey: 1 fast press of '7'.\n" +
+                            "- Change hotkey in menu 4 (1-5 fast taps).\n" +
+                            "- While clicking, ESC returns to menu.\n" +
+                            "- Edit raw config via menu 3 (Notepad).\n\n",
+            [Language.RU] = "--- БЫСТРЫЙ СТАРТ ---\n" +
+                            "- Стандартный хоткей: 1 быстрое нажатие '7'.\n" +
+                            "- Меняйте хоткей в пункте 4 (1-5 быстрых нажатий).\n" +
+                            "- Во время кликов ESC возвращает в меню.\n" +
+                            "- Редактировать конфиг через меню 3 (Блокнот).\n\n"
+        },
+        ["help_human"] = new()
+        {
+            [Language.EN] = "--- HUMAN CLICKING FACTS ---\n" +
+                            "• Average CPS: 6-8 (normal), 12-14 (jitter), 15-20 (butterfly).\n" +
+                            "• Humans vary intervals ±10-30 ms naturally.\n" +
+                            "• Click hold time varies 10-60 ms.\n" +
+                            "• Consistent CPS > 15 is often flagged.\n\n",
+            [Language.RU] = "--- ОСОБЕННОСТИ КЛИКОВ ЧЕЛОВЕКА ---\n" +
+                            "• Средний CPS: 6-8 (обычно), 12-14 (джиттер), 15-20 (баттерфляй).\n" +
+                            "• Естественный разброс интервалов ±10-30 мс.\n" +
+                            "• Время удержания кнопки варьируется 10-60 мс.\n" +
+                            "• Постоянный CPS > 15 часто помечается как подозрительный.\n\n"
+        },
+        ["help_param"] = new()
+        {
+            [Language.EN] = "--- PARAMETER DETAILS ---\n" +
+                            "Base delay: average time between clicks or sequences.\n" +
+                            "Random range (±ms): adds jitter. Use ~15% of base delay.\n" +
+                            "Distribution:\n" +
+                            "  Uniform - any value in range equally likely (more chaotic).\n" +
+                            "  Normal (Gaussian) - values cluster around base, tails rarer (feels more natural).\n" +
+                            "Hold time: how long mouse button stays down (10-30 ms realistic).\n" +
+                            "Hold range: random variation of hold time.\n" +
+                            "Cursor move: tiny movements (1-3 px) simulate hand tremors.\n" +
+                            "Pattern types:\n" +
+                            "  Single - one click per cycle.\n" +
+                            "  Double - two fast clicks (butterfly simulation).\n" +
+                            "  Triple - three clicks (burst weapons).\n" +
+                            "  Burst - custom number of clicks.\n" +
+                            "Burst count: number of clicks in a burst (for Burst pattern).\n" +
+                            "Burst interval: delay between clicks inside a double/triple/burst.\n" +
+                            "Burst interval range: randomises that gap to avoid perfect timing.\n" +
+                            "Random breaks: occasional long pauses (200-1500 ms) like looking away.\n" +
+                            "  Probability: chance per cycle (5-10%).\n\n",
+            [Language.RU] = "--- ПОДРОБНОСТИ ПАРАМЕТРОВ ---\n" +
+                            "Базовая задержка: среднее время между кликами/последовательностями.\n" +
+                            "Разброс (±мс): добавляет джиттер. Рекомендуется ~15% от базы.\n" +
+                            "Распределение:\n" +
+                            "  Uniform - любое значение в диапазоне равновероятно (более хаотично).\n" +
+                            "  Normal (гауссово) - значения группируются вокруг базы, края реже (естественнее).\n" +
+                            "Время удержания: как долго кнопка мыши остается нажатой (реалистично 10-30 мс).\n" +
+                            "Разброс удержания: случайная вариация времени удержания.\n" +
+                            "Движение курсора: микро-движения (1-3 пикселя) симулируют тремор рук.\n" +
+                            "Типы паттернов:\n" +
+                            "  Single - один клик за цикл.\n" +
+                            "  Double - два быстрых клика (имитация баттерфляй).\n" +
+                            "  Triple - три клика (оружие с очередью).\n" +
+                            "  Burst - произвольное количество кликов в пачке.\n" +
+                            "Количество в пачке: число кликов в пачке (для Burst).\n" +
+                            "Интервал пачки: задержка между кликами внутри double/triple/burst.\n" +
+                            "Разброс интервала пачки: случайная добавка к интервалу, убирает идеальный тайминг.\n" +
+                            "Случайные паузы: изредка длинная остановка (200-1500 мс), как отвлечение.\n" +
+                            "  Вероятность: шанс за цикл (5-10%).\n\n"
+        },
+        ["help_tips"] = new()
+        {
+            [Language.EN] = "--- TIPS ---\n" +
+                            "• Keep CPS < 15 for most games.\n" +
+                            "• Combine all features for maximum safety.\n" +
+                            "• Edit settings.txt for fine-tuning.\n" +
+                            "• Use mouse side buttons X1/X2 as hotkey.\n" +
+                            "• Help is available in 10 languages.\n" +
+                            "• Sample safe config: Double pattern, 50ms base, hold 15±5, Normal dist, cursor on, breaks 5%.\n\n",
+            [Language.RU] = "--- СОВЕТЫ ---\n" +
+                            "• Держите CPS < 15 для большинства игр.\n" +
+                            "• Комбинируйте все функции для максимальной безопасности.\n" +
+                            "• Редактируйте settings.txt для тонкой настройки.\n" +
+                            "• Используйте боковые кнопки мыши X1/X2 как хоткей.\n" +
+                            "• Справка доступна на 10 языках.\n" +
+                            "• Пример безопасной конфигурации: Double паттерн, база 50 мс, удержание 15±5, нормальное распр., курсор вкл, паузы 5%.\n\n"
+        },
+        ["help_goodbye"] = new()
+        {
+            [Language.EN] = "Have a nice day!\n",
+            [Language.RU] = "Хорошего дня!\n"
+        }
+    };
+}
