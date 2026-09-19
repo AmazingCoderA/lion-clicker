@@ -2,8 +2,9 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -29,16 +30,6 @@ jobs:
             name: lion-autoclicker-linux-aarch64
             extension: tar.gz
             cross: true
-          - os: macos-14
-            target: x86_64-apple-darwin
-            name: lion-autoclicker-macos-x86_64
-            extension: tar.gz
-            cross: false
-          - os: macos-14
-            target: aarch64-apple-darwin
-            name: lion-autoclicker-macos-aarch64
-            extension: tar.gz
-            cross: false
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -67,10 +58,12 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item "target/${{ matrix.target }}/release/lion-autoclicker.exe" dist/
-          Copy-Item README.md, LICENSE dist/
-          Compress-Archive -Path dist/* -DestinationPath "dist/${{ matrix.name }}.zip"
-          Remove-Item dist/README.md, dist/LICENSE
+          New-Item -ItemType Directory -Force dist/package | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/lion-autoclicker.exe" "dist/${{ matrix.name }}.exe"
+          Copy-Item "dist/${{ matrix.name }}.exe" dist/package/lion-autoclicker.exe
+          Copy-Item README.md, LICENSE dist/package/
+          Compress-Archive -Path dist/package/* -DestinationPath "dist/${{ matrix.name }}.zip"
+          Remove-Item -Recurse -Force dist/package
       - name: Package Unix
         if: runner.os != 'Windows'
         shell: bash
@@ -124,8 +117,20 @@ jobs:
         with:
           sparse-checkout: packaging/arch/PKGBUILD
       - name: Add Arch PKGBUILD
-        run: sed "s/^pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" packaging/arch/PKGBUILD > release/PKGBUILD
+        run: cp packaging/arch/PKGBUILD release/PKGBUILD
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: latest
+          target_commitish: ${{ github.sha }}
+          name: Lion AutoClicker Latest
+          body: |
+            Ready builds for Lion AutoClicker.
+
+            Готовые сборки Lion AutoClicker.
+
+            - Windows: download `lion-autoclicker-windows-x86_64.exe` or `.zip`
+            - Linux: download `lion-autoclicker-linux-x86_64` or `lion-autoclicker-linux-aarch64`
+            - Flatpak: download `lion-autoclicker.flatpak`
+            - Arch Linux: download `PKGBUILD`
           files: release/*
-          generate_release_notes: true
+          make_latest: true
