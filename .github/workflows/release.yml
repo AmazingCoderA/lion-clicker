@@ -1,0 +1,129 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: lion-autoclicker-windows-x86_64
+            extension: zip
+            cross: false
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            name: lion-autoclicker-linux-x86_64
+            extension: tar.gz
+            cross: false
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            name: lion-autoclicker-linux-aarch64
+            extension: tar.gz
+            cross: true
+          - os: macos-13
+            target: x86_64-apple-darwin
+            name: lion-autoclicker-macos-x86_64
+            extension: tar.gz
+            cross: false
+          - os: macos-14
+            target: aarch64-apple-darwin
+            name: lion-autoclicker-macos-aarch64
+            extension: tar.gz
+            cross: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.88'
+          targets: ${{ matrix.target }}
+      - name: Install Linux libraries
+        if: runner.os == 'Linux' && matrix.cross == false
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxkbcommon-dev libxkbcommon-x11-dev
+      - name: Install cross
+        if: matrix.cross == true
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+      - name: Build
+        shell: bash
+        run: |
+          if [[ "${{ matrix.cross }}" == "true" ]]; then
+            cross build --release --locked --target "${{ matrix.target }}"
+          else
+            cargo build --release --locked --target "${{ matrix.target }}"
+          fi
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/lion-autoclicker.exe" dist/
+          Copy-Item README.md, LICENSE dist/
+          Compress-Archive -Path dist/* -DestinationPath "dist/${{ matrix.name }}.zip"
+          Remove-Item dist/lion-autoclicker.exe, dist/README.md, dist/LICENSE
+      - name: Package Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist/package
+          cp "target/${{ matrix.target }}/release/lion-autoclicker" dist/package/
+          cp README.md LICENSE dist/package/
+          tar -czf "dist/${{ matrix.name }}.tar.gz" -C dist/package .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/${{ matrix.name }}.${{ matrix.extension }}
+
+  flatpak:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: lion-autoclicker.flatpak
+          manifest-path: io.github.lionautoclicker.LionAutoclicker.yml
+          cache-key: flatpak-release-${{ github.sha }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lion-autoclicker-flatpak
+          path: lion-autoclicker.flatpak
+
+  arch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lion-autoclicker-arch
+          path: packaging/arch/PKGBUILD
+
+  publish:
+    needs: [native, flatpak, arch]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: packaging/arch/PKGBUILD
+      - name: Add Arch PKGBUILD
+        run: sed "s/^pkgver=.*/pkgver=${GITHUB_REF_NAME#v}/" packaging/arch/PKGBUILD > release/PKGBUILD
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true

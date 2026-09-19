@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/AmazingCoderA/lion-clicker/actions/workflows/build.yml/badge.svg)](https://github.com/AmazingCoderA/lion-clicker/actions/workflows/build.yml)
 
-Автокликер на Rust с графическим интерфейсом для Windows и Linux/X11.
+Автокликер на Rust с графическим интерфейсом для Windows, Linux/X11 и macOS.
 
 ## Возможности
 
@@ -37,6 +37,8 @@ GitHub Actions запускается автоматически при кажд
 - `lion-autoclicker-linux` — Linux-бинарник.
 - `lion-autoclicker.flatpak` — Flatpak-пакет.
 
+Релиз создаётся автоматически после отправки тега вида `v0.1.0`. В него входят архивы Windows x86_64, Linux x86_64/ARM64 и macOS x86_64/ARM64, а также Flatpak и `PKGBUILD` для Arch Linux.
+
 ## Flatpak
 
 Установите Flatpak, `flatpak-builder`, Flathub и SDK:
@@ -50,6 +52,17 @@ flatpak install --user ./io.github.lionautoclicker.LionAutoclicker.flatpak
 ```
 
 Файл `cargo-sources.json` фиксирует исходники Cargo для воспроизводимой офлайн-сборки внутри Flatpak.
+
+## Arch Linux / AUR
+
+Для локальной установки из готового исходного пакета:
+
+```sh
+curl -LO https://github.com/AmazingCoderA/lion-clicker/releases/latest/download/PKGBUILD
+makepkg -si
+```
+
+`PKGBUILD` также можно использовать для публикации в AUR и установки командой `yay -S lion-autoclicker` после публикации пакета в AUR.
 
 ## Настройки
 
