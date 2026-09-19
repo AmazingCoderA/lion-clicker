@@ -39,6 +39,18 @@ GitHub Actions запускается автоматически при кажд
 
 Релиз создаётся автоматически после отправки тега вида `v0.1.0`. В него входят архивы Windows x86_64, Linux x86_64/ARM64 и macOS x86_64/ARM64, а также Flatpak и `PKGBUILD` для Arch Linux.
 
+## Buttons / Кнопки
+
+| Русский | English | Назначение / Purpose |
+| --- | --- | --- |
+| Старт / Стоп | Start / Stop | Запустить или остановить автокликер / Start or stop clicking |
+| Кнопка мыши | Mouse button | Левая, правая или средняя / Left, right, or middle |
+| Интервал | Interval | Задержка между кликами / Delay between clicks |
+| Серия кликов | Click pattern | Одинарный, двойной, тройной или Burst / Single, double, triple, or burst |
+| Горячая клавиша | Hotkey | Глобальная клавиша запуска и остановки / Global start-stop shortcut |
+| Сохранить | Save | Сохранить настройки / Save settings |
+| Применить | Apply | Применить настройки без закрытия окна / Apply without closing |
+
 ## Flatpak
 
 Установите Flatpak, `flatpak-builder`, Flathub и SDK:

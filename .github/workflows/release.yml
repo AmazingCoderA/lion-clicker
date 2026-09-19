@@ -29,7 +29,7 @@ jobs:
             name: lion-autoclicker-linux-aarch64
             extension: tar.gz
             cross: true
-          - os: macos-13
+          - os: macos-14
             target: x86_64-apple-darwin
             name: lion-autoclicker-macos-x86_64
             extension: tar.gz
@@ -70,7 +70,7 @@ jobs:
           Copy-Item "target/${{ matrix.target }}/release/lion-autoclicker.exe" dist/
           Copy-Item README.md, LICENSE dist/
           Compress-Archive -Path dist/* -DestinationPath "dist/${{ matrix.name }}.zip"
-          Remove-Item dist/lion-autoclicker.exe, dist/README.md, dist/LICENSE
+          Remove-Item dist/README.md, dist/LICENSE
       - name: Package Unix
         if: runner.os != 'Windows'
         shell: bash
@@ -79,10 +79,12 @@ jobs:
           cp "target/${{ matrix.target }}/release/lion-autoclicker" dist/package/
           cp README.md LICENSE dist/package/
           tar -czf "dist/${{ matrix.name }}.tar.gz" -C dist/package .
+          cp "target/${{ matrix.target }}/release/lion-autoclicker" "dist/${{ matrix.name }}"
+          rm -rf dist/package
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: dist/${{ matrix.name }}.${{ matrix.extension }}
+          path: dist/*
 
   flatpak:
     runs-on: ubuntu-latest
