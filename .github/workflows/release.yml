@@ -109,15 +109,17 @@ jobs:
     needs: [native, flatpak, arch]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: packaging/arch/PKGBUILD
       - uses: actions/download-artifact@v4
         with:
           path: release
           merge-multiple: true
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: packaging/arch/PKGBUILD
       - name: Add Arch PKGBUILD
-        run: cp packaging/arch/PKGBUILD release/PKGBUILD
+        run: |
+          mkdir -p release
+          cp packaging/arch/PKGBUILD release/PKGBUILD
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
