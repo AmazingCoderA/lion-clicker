@@ -119,7 +119,7 @@ jobs:
       - name: Add Arch PKGBUILD
         run: |
           mkdir -p release
-          cp packaging/arch/PKGBUILD release/PKGBUILD
+          sed "s/^_commit=.*/_commit=${GITHUB_SHA}/" packaging/arch/PKGBUILD > release/PKGBUILD
       - name: Prepare release metadata
         run: |
           short_sha="${GITHUB_SHA::7}"

@@ -205,7 +205,7 @@ fn run_session<M: MouseOutput>(
                 if control.wait(Duration::ZERO) {
                     break 'session;
                 }
-                if config.fixed_position {
+                let restore_position = if config.fixed_position {
                     let radius = if config.randomize {
                         config.radius_px as i32
                     } else {
@@ -215,7 +215,17 @@ fn run_session<M: MouseOutput>(
                     let dx = rng.gen_range(-radius..=radius);
                     let dy = rng.gen_range(-radius..=radius);
                     mouse.output.move_to(config.x + dx, config.y + dy)?;
-                }
+                    None
+                } else if config.randomize && config.cursor_tremor && config.tremor_px > 0 {
+                    let (x, y) = mouse.output.position()?;
+                    let radius = config.tremor_px as i32;
+                    let dx = rng.gen_range(-radius..=radius);
+                    let dy = rng.gen_range(-radius..=radius);
+                    mouse.output.move_to(x + dx, y + dy)?;
+                    Some((x, y))
+                } else {
+                    None
+                };
                 mouse.press(config.button)?;
                 let hold = sample_ms(
                     &mut rng,
@@ -225,6 +235,9 @@ fn run_session<M: MouseOutput>(
                 );
                 let interrupted = control.wait(Duration::from_millis(hold));
                 mouse.release()?;
+                if let Some((x, y)) = restore_position {
+                    mouse.output.move_to(x, y)?;
+                }
                 clicks += 1;
                 {
                     let mut state = shared.lock().unwrap();
@@ -297,7 +310,11 @@ mod tests {
             self.events.lock().unwrap().push("up");
             Ok(())
         }
+        fn position(&self) -> Result<(i32, i32)> {
+            Ok((100, 200))
+        }
         fn move_to(&mut self, _: i32, _: i32) -> Result<()> {
+            self.events.lock().unwrap().push("move");
             Ok(())
         }
     }
@@ -379,6 +396,32 @@ mod tests {
         run_session(&config, mouse, &mut control, &shared).unwrap();
         assert_eq!(shared.lock().unwrap().clicks, 2);
         assert_eq!(*events.lock().unwrap(), ["down", "up", "down", "up"]);
+    }
+
+    #[test]
+    fn cursor_tremor_restores_original_position() {
+        let (_tx, rx) = mpsc::channel();
+        let events = Arc::new(Mutex::new(vec![]));
+        let mouse = FakeMouse {
+            events: events.clone(),
+            cancel_on_press: None,
+            fail_press: false,
+        };
+        let config = Config {
+            cursor_tremor: true,
+            tremor_px: 2,
+            max_clicks: 1,
+            hold_ms: 1,
+            randomize: true,
+            ..Config::default()
+        };
+        let mut control = Control {
+            rx,
+            pending: None,
+            deadline: None,
+        };
+        run_session(&config, mouse, &mut control, &Mutex::new(Status::default())).unwrap();
+        assert_eq!(*events.lock().unwrap(), ["move", "down", "up", "move"]);
     }
 
     #[test]

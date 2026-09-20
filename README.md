@@ -13,6 +13,8 @@
 
 Lion AutoClicker - графический автокликер на Rust для Windows и Linux/X11. Поддерживает точные интервалы, серии кликов, случайный разброс, лимиты и глобальные горячие клавиши.
 
+Возможности: одиночный/двойной/тройной клик, серия, разброс интервалов, разброс удержания, разброс внутри серии, длинные случайные паузы, фиксированная точка с радиусом, микро-движение вокруг текущего курсора, лимит кликов и времени.
+
 ### Скачать
 
 - Windows: `lion-autoclicker-windows-x86_64.exe` из [последнего релиза](https://github.com/AmazingCoderA/lion-clicker/releases/latest).
@@ -50,6 +52,8 @@ Linux работает через X11. В Wayland используйте XWaylan
 ## English
 
 Lion AutoClicker is a Rust desktop autoclicker for Windows and Linux/X11. It supports precise intervals, click patterns, random variation, safety limits, and global hotkeys.
+
+Features: single/double/triple clicks, burst mode, interval variation, hold variation, within-burst variation, random long breaks, fixed point radius, micro-move around the current cursor, click limit, and time limit.
 
 ### Download
 

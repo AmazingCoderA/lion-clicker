@@ -325,6 +325,15 @@ impl eframe::App for App {
                                 ui.add(egui::DragValue::new(&mut c.radius_px).range(0..=1000));
                             });
                         });
+                        ui.add_enabled_ui(!c.fixed_position && c.randomize, |ui| {
+                            ui.checkbox(&mut c.cursor_tremor, l.text("Микро-движение вокруг текущего курсора", "Micro-move around current cursor"));
+                            ui.add_enabled_ui(c.cursor_tremor, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label(l.text("Разброс ± px", "Variation ± px"));
+                                    ui.add(egui::DragValue::new(&mut c.tremor_px).range(0..=1000));
+                                });
+                            });
+                        });
                         egui::Grid::new("limits").num_columns(2).show(ui, |ui| {
                             number(ui, l.text("Задержка старта, мс", "Start delay, ms"), &mut c.start_delay_ms, 0..=60_000);
                             number(ui, l.text("Лимит кликов (0 = без лимита)", "Click limit (0 = unlimited)"), &mut c.max_clicks, 0..=1_000_000_000);
@@ -348,7 +357,7 @@ impl eframe::App for App {
                 ui.separator();
                 egui::CollapsingHeader::new(l.text("Справка и конфигурация", "Help and configuration")).show(ui, |ui| {
                     ui.label(l.text("1. Настройте интервалы и кнопку мыши.\n2. Нажмите F6 или «Запустить» и наведите курсор на цель.\n3. F6 переключает работу, Ctrl+Shift+F12 останавливает.\nEsc работает только в окне приложения. Закрытие окна останавливает движок.", "1. Set timing and mouse button.\n2. Press F6 or Start and point at your target.\n3. F6 toggles clicking; Ctrl+Shift+F12 stops it.\nEscape only works inside this window. Closing the window stops the engine."));
-                    ui.label(l.text("Интервалы — паузы после отпускания кнопки, а не целевой CPS. Лимит времени отсчитывается после задержки старта. Разброс позиции работает только для фиксированной точки при включённых вариациях.", "Intervals are pauses after release, not a target CPS. The time limit starts after the start delay. Position variation requires a fixed point and random variation enabled."));
+                    ui.label(l.text("Интервалы — паузы после отпускания кнопки, а не целевой CPS. Лимит времени отсчитывается после задержки старта. Разброс позиции работает для фиксированной точки или микро-движения курсора при включённых вариациях.", "Intervals are pauses after release, not a target CPS. The time limit starts after the start delay. Position variation works with a fixed point or cursor micro-move when random variation is enabled."));
                     ui.label(l.text("Изменения используются при следующем старте. «Сохранить / применить» записывает настройки на диск. Для чтения внешних изменений нажмите «Перечитать».", "Changes are used on the next start. Save / apply writes settings to disk. Use Reload to read external edits."));
                     if let Ok(path) = config::config_path() {
                         ui.label(path.display().to_string());

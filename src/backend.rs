@@ -5,6 +5,7 @@ use enigo::{Coordinate, Direction, Enigo, Mouse, Settings};
 pub trait MouseOutput {
     fn press(&mut self, button: Button) -> Result<()>;
     fn release(&mut self, button: Button) -> Result<()>;
+    fn position(&self) -> Result<(i32, i32)>;
     fn move_to(&mut self, x: i32, y: i32) -> Result<()>;
 }
 
@@ -43,6 +44,10 @@ impl MouseOutput for NativeMouse {
     fn release(&mut self, button: Button) -> Result<()> {
         self.0.button(native_button(button), Direction::Release)?;
         Ok(())
+    }
+
+    fn position(&self) -> Result<(i32, i32)> {
+        Ok(self.0.location()?)
     }
 
     fn move_to(&mut self, x: i32, y: i32) -> Result<()> {
