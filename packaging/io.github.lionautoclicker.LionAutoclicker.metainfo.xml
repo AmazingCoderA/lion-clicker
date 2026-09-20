@@ -6,14 +6,25 @@
   <summary xml:lang="ru">Автоматизация кликов с гибкими интервалами и лимитами</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
+  <developer id="io.github.lionautoclicker">
+    <name>Lion AutoClicker contributors</name>
+  </developer>
   <description>
     <p>Lion AutoClicker provides click sequences, bounded timing variation, optional breaks, fixed coordinates, safety limits, and global controls.</p>
     <p xml:lang="ru">Lion AutoClicker поддерживает серии кликов, ограниченный разброс интервалов, паузы, фиксированную точку, безопасные лимиты и глобальное управление.</p>
+    <p>On Linux the app uses X11/XWayland for global hotkeys and mouse input automation.</p>
+    <p xml:lang="ru">В Linux приложение использует X11/XWayland для глобальных горячих клавиш и автоматизации ввода мыши.</p>
   </description>
+  <url type="homepage">https://github.com/AmazingCoderA/lion-clicker</url>
+  <url type="bugtracker">https://github.com/AmazingCoderA/lion-clicker/issues</url>
+  <url type="vcs-browser">https://github.com/AmazingCoderA/lion-clicker</url>
   <launchable type="desktop-id">io.github.lionautoclicker.LionAutoclicker.desktop</launchable>
+  <provides>
+    <binary>lion-autoclicker</binary>
+  </provides>
   <content_rating type="oars-1.1" />
   <releases>
-    <release version="0.1.0" date="2026-09-18">
+    <release version="0.1.0" date="2026-09-20">
       <description><p>Initial cross-platform Rust release.</p></description>
     </release>
   </releases>

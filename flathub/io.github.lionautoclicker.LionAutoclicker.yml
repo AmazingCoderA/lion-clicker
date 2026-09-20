@@ -7,11 +7,11 @@ sdk-extensions:
 command: lion-autoclicker
 
 finish-args:
-  # Required for global hotkeys and mouse injection. Wayland is intentionally
-  # not requested because desktop-wide input automation is not available there.
+  # X11 is required for desktop-wide hotkeys and mouse input automation.
+  # Wayland is not requested because it does not allow this use case globally.
   - --socket=x11
   - --share=ipc
-  # Required by eframe/glow for accelerated rendering inside the sandbox.
+  # Required by eframe/glow for accelerated rendering.
   - --device=dri
 
 build-options:
@@ -30,12 +30,6 @@ modules:
       - install -Dm644 packaging/io.github.lionautoclicker.LionAutoclicker.svg /app/share/icons/hicolor/scalable/apps/io.github.lionautoclicker.LionAutoclicker.svg
     sources:
       - cargo-sources.json
-      - type: dir
-        path: .
-        skip:
-          - target
-          - vendor
-          - .flatpak-builder
-          - build-dir
-          - repo
-          - dist
+      - type: git
+        url: https://github.com/AmazingCoderA/lion-clicker.git
+        commit: REPLACE_WITH_RELEASE_COMMIT

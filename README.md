@@ -3,6 +3,7 @@
 [![Windows](https://img.shields.io/badge/Download-Windows.exe-0078D4?style=for-the-badge&logo=windows)](https://github.com/AmazingCoderA/lion-clicker/releases/latest/download/lion-autoclicker-windows-x86_64.exe)
 [![Linux](https://img.shields.io/badge/Download-Linux_binary-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/AmazingCoderA/lion-clicker/releases/latest/download/lion-autoclicker-linux-x86_64)
 [![Flatpak](https://img.shields.io/badge/Download-Flatpak-4A90D9?style=for-the-badge&logo=flatpak)](https://github.com/AmazingCoderA/lion-clicker/releases/latest/download/lion-autoclicker.flatpak)
+[![Flathub](https://img.shields.io/badge/Flathub-prepared-orange?style=for-the-badge&logo=flathub)](FLATHUB.md)
 [![RU](https://img.shields.io/badge/README-RU-red?style=for-the-badge)](#русский)
 [![EN](https://img.shields.io/badge/README-EN-blue?style=for-the-badge)](#english)
 
