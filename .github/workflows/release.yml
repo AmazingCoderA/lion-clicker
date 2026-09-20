@@ -120,15 +120,24 @@ jobs:
         run: |
           mkdir -p release
           cp packaging/arch/PKGBUILD release/PKGBUILD
+      - name: Prepare release metadata
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+          echo "RELEASE_TAG=release-${GITHUB_RUN_NUMBER}-${short_sha}" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME=Lion AutoClicker release ${GITHUB_RUN_NUMBER} (${short_sha})" >> "$GITHUB_ENV"
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
+          tag_name: ${{ env.RELEASE_TAG }}
           target_commitish: ${{ github.sha }}
-          name: Lion AutoClicker Latest
+          name: ${{ env.RELEASE_NAME }}
           body: |
             Ready builds for Lion AutoClicker.
 
             Готовые сборки Lion AutoClicker.
+
+            This release was built from commit `${{ github.sha }}`.
+
+            Этот релиз собран из коммита `${{ github.sha }}`.
 
             - Windows: download `lion-autoclicker-windows-x86_64.exe` or `.zip`
             - Linux: download `lion-autoclicker-linux-x86_64` or `lion-autoclicker-linux-aarch64`
