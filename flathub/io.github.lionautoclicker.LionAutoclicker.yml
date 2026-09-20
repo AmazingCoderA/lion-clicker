@@ -32,4 +32,4 @@ modules:
       - cargo-sources.json
       - type: git
         url: https://github.com/AmazingCoderA/lion-clicker.git
-        commit: 9d3b6b1c138d3f2d5fb67ce3b60f87219d878c98
+        commit: f4e1478c1fc4fd9d5e586e81293794bd276c0ede
