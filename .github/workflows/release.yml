@@ -20,17 +20,51 @@ jobs:
             name: lion-autoclicker-windows-x86_64
             extension: zip
             cross: false
+            experimental: false
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            name: lion-autoclicker-windows-aarch64
+            extension: zip
+            cross: false
+            experimental: true
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             name: lion-autoclicker-linux-x86_64
             extension: tar.gz
             cross: false
+            experimental: false
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             name: lion-autoclicker-linux-aarch64
             extension: tar.gz
             cross: true
+            experimental: false
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            name: lion-autoclicker-linux-armv7
+            extension: tar.gz
+            cross: true
+            experimental: true
+          - os: ubuntu-latest
+            target: x86_64-unknown-freebsd
+            name: lion-autoclicker-freebsd-x86_64
+            extension: tar.gz
+            cross: true
+            experimental: true
+          - os: macos-14
+            target: aarch64-apple-darwin
+            name: lion-autoclicker-macos-aarch64
+            extension: tar.gz
+            cross: false
+            experimental: true
+          - os: macos-14
+            target: x86_64-apple-darwin
+            name: lion-autoclicker-macos-x86_64
+            extension: tar.gz
+            cross: false
+            experimental: true
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -140,7 +174,11 @@ jobs:
             Этот релиз собран из коммита `${{ github.sha }}`.
 
             - Windows: download `lion-autoclicker-windows-x86_64.exe` or `.zip`
+            - Windows ARM64: download `lion-autoclicker-windows-aarch64.exe` if present
             - Linux: download `lion-autoclicker-linux-x86_64` or `lion-autoclicker-linux-aarch64`
+            - Linux ARMv7: download `lion-autoclicker-linux-armv7` if present
+            - macOS: download `lion-autoclicker-macos-aarch64` or `lion-autoclicker-macos-x86_64` if present
+            - FreeBSD x86_64: download `lion-autoclicker-freebsd-x86_64` if present
             - Flatpak: download `lion-autoclicker.flatpak`
             - Arch Linux: download `PKGBUILD`
           files: release/*

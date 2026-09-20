@@ -18,7 +18,8 @@ Lion AutoClicker - графический автокликер на Rust для 
 ### Скачать
 
 - Windows: `lion-autoclicker-windows-x86_64.exe` из [последнего релиза](https://github.com/AmazingCoderA/lion-clicker/releases/latest).
-- Linux: `lion-autoclicker-linux-x86_64` или `lion-autoclicker-linux-aarch64` из релиза.
+- Linux: `lion-autoclicker-linux-x86_64`, `lion-autoclicker-linux-aarch64` или, если собралось, `lion-autoclicker-linux-armv7`.
+- Windows ARM64, macOS ARM64/x86_64 и FreeBSD x86_64 публикуются как experimental, если CI смог их собрать.
 - Flatpak: `lion-autoclicker.flatpak` из релиза.
 - Arch Linux: скачайте `PKGBUILD`, затем выполните `makepkg -si`.
 
@@ -58,7 +59,8 @@ Features: single/double/triple clicks, burst mode, interval variation, hold vari
 ### Download
 
 - Windows: `lion-autoclicker-windows-x86_64.exe` from the [latest release](https://github.com/AmazingCoderA/lion-clicker/releases/latest).
-- Linux: `lion-autoclicker-linux-x86_64` or `lion-autoclicker-linux-aarch64` from the release.
+- Linux: `lion-autoclicker-linux-x86_64`, `lion-autoclicker-linux-aarch64`, or `lion-autoclicker-linux-armv7` when available.
+- Windows ARM64, macOS ARM64/x86_64, and FreeBSD x86_64 are published as experimental builds when CI can build them.
 - Flatpak: `lion-autoclicker.flatpak` from the release.
 - Arch Linux: download `PKGBUILD`, then run `makepkg -si`.
 

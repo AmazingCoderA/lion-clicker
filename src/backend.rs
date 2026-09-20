@@ -13,7 +13,7 @@ pub struct NativeMouse(Enigo);
 
 impl NativeMouse {
     pub fn new() -> Result<Self> {
-        #[cfg(target_os = "linux")]
+        #[cfg(all(unix, not(target_os = "macos")))]
         if std::env::var_os("DISPLAY").is_none() {
             anyhow::bail!("X11 DISPLAY is unavailable. This version needs an X11 desktop session.");
         }
