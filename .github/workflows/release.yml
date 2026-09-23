@@ -51,12 +51,6 @@ jobs:
             extension: tar.gz
             cross: true
             experimental: true
-          - os: ubuntu-latest
-            target: x86_64-unknown-openbsd
-            name: lion-autoclicker-openbsd-x86_64
-            extension: tar.gz
-            cross: true
-            experimental: true
           - os: macos-14
             target: aarch64-apple-darwin
             name: lion-autoclicker-macos-aarch64
@@ -136,6 +130,29 @@ jobs:
           name: lion-autoclicker-flatpak
           path: lion-autoclicker.flatpak
 
+  openbsd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: vmactions/openbsd-vm@v1
+        continue-on-error: true
+        with:
+          release: "7"
+          prepare: |
+            pkg_add rust pkgconf libxkbcommon
+          run: |
+            cargo build --release --locked
+            mkdir -p dist/package
+            cp target/release/lion-autoclicker dist/package/
+            cp README.md LICENSE dist/package/
+            tar -czf dist/lion-autoclicker-openbsd-x86_64.tar.gz -C dist/package .
+            cp target/release/lion-autoclicker dist/lion-autoclicker-openbsd-x86_64
+      - uses: actions/upload-artifact@v4
+        if: hashFiles('dist/*openbsd*') != ''
+        with:
+          name: lion-autoclicker-openbsd-x86_64
+          path: dist/*openbsd*
+
   arch:
     runs-on: ubuntu-latest
     steps:
@@ -146,7 +163,7 @@ jobs:
           path: packaging/arch/PKGBUILD
 
   publish:
-    needs: [native, flatpak, arch]
+    needs: [native, flatpak, openbsd, arch]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
