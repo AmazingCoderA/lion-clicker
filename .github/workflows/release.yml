@@ -51,6 +51,12 @@ jobs:
             extension: tar.gz
             cross: true
             experimental: true
+          - os: ubuntu-latest
+            target: x86_64-unknown-openbsd
+            name: lion-autoclicker-openbsd-x86_64
+            extension: tar.gz
+            cross: true
+            experimental: true
           - os: macos-14
             target: aarch64-apple-darwin
             name: lion-autoclicker-macos-aarch64
@@ -179,6 +185,7 @@ jobs:
             - Linux ARMv7: download `lion-autoclicker-linux-armv7` if present
             - macOS: download `lion-autoclicker-macos-aarch64` or `lion-autoclicker-macos-x86_64` if present
             - FreeBSD x86_64: download `lion-autoclicker-freebsd-x86_64` if present
+            - OpenBSD x86_64: download `lion-autoclicker-openbsd-x86_64` if present
             - Flatpak: download `lion-autoclicker.flatpak`
             - Arch Linux: download `PKGBUILD`
           files: release/*

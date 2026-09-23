@@ -11,15 +11,15 @@
 
 ## Русский
 
-Lion AutoClicker - графический автокликер на Rust для Windows и Linux/X11. Поддерживает точные интервалы, серии кликов, случайный разброс, лимиты и глобальные горячие клавиши.
+Lion AutoClicker - графический автокликер на Rust для Windows, Linux/X11 и экспериментальных BSD/macOS сборок. Поддерживает точные интервалы, серии кликов, случайный разброс, лимиты, темы, кастомизацию и глобальные горячие клавиши.
 
-Возможности: одиночный/двойной/тройной клик, серия, разброс интервалов, разброс удержания, разброс внутри серии, длинные случайные паузы, фиксированная точка с радиусом, микро-движение вокруг текущего курсора, лимит кликов и времени.
+Возможности: одиночный/двойной/тройной клик, серия, разброс интервалов, разброс удержания, разброс внутри серии, длинные случайные паузы, регулярные паузы через N кликов, плавный разгон, фиксированная точка с радиусом, возврат курсора, микро-движение вокруг текущего курсора, fail-safe остановка при ручном движении курсора, лимит кликов и времени.
 
 ### Скачать
 
 - Windows: `lion-autoclicker-windows-x86_64.exe` из [последнего релиза](https://github.com/AmazingCoderA/lion-clicker/releases/latest).
 - Linux: `lion-autoclicker-linux-x86_64`, `lion-autoclicker-linux-aarch64` или, если собралось, `lion-autoclicker-linux-armv7`.
-- Windows ARM64, macOS ARM64/x86_64 и FreeBSD x86_64 публикуются как experimental, если CI смог их собрать.
+- Windows ARM64, macOS ARM64/x86_64, FreeBSD x86_64 и OpenBSD x86_64 публикуются как experimental, если CI смог их собрать.
 - Flatpak: `lion-autoclicker.flatpak` из релиза.
 - Arch Linux: скачайте `PKGBUILD`, затем выполните `makepkg -si`.
 
@@ -32,12 +32,15 @@ Lion AutoClicker - графический автокликер на Rust для 
 | Interval | Задержка между кликами |
 | Click pattern | Одинарный, двойной, тройной клик или серия |
 | Hotkey | Глобальная клавиша запуска и остановки |
+| Pick key | Выбор хоткея через следующее нажатие клавиши |
+| Theme / Accent | Темы, RGB-акцент, масштаб и компактный режим |
 | Save | Сохраняет настройки в файл |
 | Apply | Применяет настройки без перезапуска |
 
 ### Управление
 
 - `F6` по умолчанию: старт/стоп.
+- Хоткей можно выбрать из списка, захватить кнопкой `Выбрать клавишу` или ввести вручную, например `AudioVolumeUp`.
 - `Ctrl+Shift+F12`: аварийная остановка.
 - `Esc`: остановка, если окно приложения в фокусе.
 
@@ -52,15 +55,15 @@ Linux работает через X11. В Wayland используйте XWaylan
 
 ## English
 
-Lion AutoClicker is a Rust desktop autoclicker for Windows and Linux/X11. It supports precise intervals, click patterns, random variation, safety limits, and global hotkeys.
+Lion AutoClicker is a Rust desktop autoclicker for Windows, Linux/X11, and experimental BSD/macOS builds. It supports precise intervals, click patterns, random variation, safety limits, themes, customization, and global hotkeys.
 
-Features: single/double/triple clicks, burst mode, interval variation, hold variation, within-burst variation, random long breaks, fixed point radius, micro-move around the current cursor, click limit, and time limit.
+Features: single/double/triple clicks, burst mode, interval variation, hold variation, within-burst variation, random long breaks, scheduled pauses every N clicks, ramp-up, fixed point radius, cursor restore, micro-move around the current cursor, fail-safe stop on manual cursor movement, click limit, and time limit.
 
 ### Download
 
 - Windows: `lion-autoclicker-windows-x86_64.exe` from the [latest release](https://github.com/AmazingCoderA/lion-clicker/releases/latest).
 - Linux: `lion-autoclicker-linux-x86_64`, `lion-autoclicker-linux-aarch64`, or `lion-autoclicker-linux-armv7` when available.
-- Windows ARM64, macOS ARM64/x86_64, and FreeBSD x86_64 are published as experimental builds when CI can build them.
+- Windows ARM64, macOS ARM64/x86_64, FreeBSD x86_64, and OpenBSD x86_64 are published as experimental builds when CI can build them.
 - Flatpak: `lion-autoclicker.flatpak` from the release.
 - Arch Linux: download `PKGBUILD`, then run `makepkg -si`.
 
@@ -73,12 +76,15 @@ Features: single/double/triple clicks, burst mode, interval variation, hold vari
 | Interval | Delay between clicks |
 | Click pattern | Single, double, triple, or burst clicks |
 | Hotkey | Global start and stop shortcut |
+| Pick key | Sets the hotkey from the next key press |
+| Theme / Accent | Themes, RGB accent, UI scale, and compact mode |
 | Save | Saves settings to disk |
 | Apply | Applies settings without restarting |
 
 ### Controls
 
 - `F6` by default: start/stop.
+- The hotkey can be selected from the list, captured with `Pick key`, or typed manually, for example `AudioVolumeUp`.
 - `Ctrl+Shift+F12`: emergency stop.
 - `Esc`: stop while the app window is focused.
 

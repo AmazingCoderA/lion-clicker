@@ -12,9 +12,6 @@ pub fn parse_trigger(text: &str) -> Result<HotKey> {
     if key == STOP_HOTKEY.parse::<HotKey>()? {
         bail!("Ctrl+Shift+F12 is reserved for Stop");
     }
-    if key == "Escape".parse::<HotKey>()? {
-        bail!("Escape is reserved for local Stop");
-    }
     Ok(key)
 }
 

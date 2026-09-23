@@ -10,6 +10,16 @@ pub enum Language {
     En,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Theme {
+    #[default]
+    LionDark,
+    Midnight,
+    Forest,
+    Light,
+    HighContrast,
+}
+
 impl Language {
     pub fn text(self, ru: &'static str, en: &'static str) -> &'static str {
         match self {
@@ -48,6 +58,12 @@ pub enum Distribution {
 pub struct Config {
     pub version: u32,
     pub language: Language,
+    pub theme: Theme,
+    pub accent_r: u8,
+    pub accent_g: u8,
+    pub accent_b: u8,
+    pub ui_scale_percent: u16,
+    pub compact_mode: bool,
     pub delay_ms: u64,
     pub hold_ms: u64,
     pub button: Button,
@@ -67,12 +83,19 @@ pub struct Config {
     pub x: i32,
     pub y: i32,
     pub radius_px: u32,
+    pub restore_cursor_after_fixed: bool,
     pub cursor_tremor: bool,
     pub tremor_px: u32,
+    pub stop_on_cursor_move: bool,
+    pub cursor_move_tolerance_px: u32,
     pub hotkey: String,
     pub trigger_count: u8,
     pub trigger_timeout_ms: u64,
     pub start_delay_ms: u64,
+    pub ramp_up_ms: u64,
+    pub pause_every_clicks: u64,
+    pub pause_every_min_ms: u64,
+    pub pause_every_max_ms: u64,
     pub max_clicks: u64,
     pub max_duration_s: u64,
 }
@@ -82,6 +105,12 @@ impl Default for Config {
         Self {
             version: 1,
             language: Language::Ru,
+            theme: Theme::LionDark,
+            accent_r: 239,
+            accent_g: 179,
+            accent_b: 74,
+            ui_scale_percent: 100,
+            compact_mode: false,
             delay_ms: 40,
             hold_ms: 10,
             button: Button::Left,
@@ -101,12 +130,19 @@ impl Default for Config {
             x: 0,
             y: 0,
             radius_px: 0,
+            restore_cursor_after_fixed: false,
             cursor_tremor: false,
             tremor_px: 2,
+            stop_on_cursor_move: false,
+            cursor_move_tolerance_px: 80,
             hotkey: "F6".into(),
             trigger_count: 1,
             trigger_timeout_ms: 400,
             start_delay_ms: 1500,
+            ramp_up_ms: 0,
+            pause_every_clicks: 0,
+            pause_every_min_ms: 1000,
+            pause_every_max_ms: 5000,
             max_clicks: 0,
             max_duration_s: 0,
         }
@@ -121,6 +157,7 @@ impl Config {
         for (name, value, min, max) in [
             ("delay_ms", self.delay_ms, 1, 3_600_000),
             ("hold_ms", self.hold_ms, 1, 60_000),
+            ("ui_scale_percent", self.ui_scale_percent as u64, 75, 200),
             ("burst_count", self.burst_count as u64, 1, 1000),
             ("burst_interval_ms", self.burst_interval_ms, 1, 60_000),
             ("delay_jitter_ms", self.delay_jitter_ms, 0, 60_000),
@@ -131,9 +168,24 @@ impl Config {
             ("break_max_ms", self.break_max_ms, 1, 3_600_000),
             ("radius_px", self.radius_px as u64, 0, 1000),
             ("tremor_px", self.tremor_px as u64, 0, 1000),
+            (
+                "cursor_move_tolerance_px",
+                self.cursor_move_tolerance_px as u64,
+                0,
+                10_000,
+            ),
             ("trigger_count", self.trigger_count as u64, 1, 5),
             ("trigger_timeout_ms", self.trigger_timeout_ms, 50, 5000),
             ("start_delay_ms", self.start_delay_ms, 0, 60_000),
+            ("ramp_up_ms", self.ramp_up_ms, 0, 3_600_000),
+            (
+                "pause_every_clicks",
+                self.pause_every_clicks,
+                0,
+                1_000_000_000,
+            ),
+            ("pause_every_min_ms", self.pause_every_min_ms, 1, 3_600_000),
+            ("pause_every_max_ms", self.pause_every_max_ms, 1, 3_600_000),
             ("max_clicks", self.max_clicks, 0, 1_000_000_000),
             ("max_duration_s", self.max_duration_s, 0, 604_800),
         ] {
@@ -143,6 +195,9 @@ impl Config {
         }
         if self.break_min_ms > self.break_max_ms {
             bail!("break_min_ms must not exceed break_max_ms");
+        }
+        if self.pause_every_min_ms > self.pause_every_max_ms {
+            bail!("pause_every_min_ms must not exceed pause_every_max_ms");
         }
         if self.x.unsigned_abs() > 100_000 || self.y.unsigned_abs() > 100_000 {
             bail!("Coordinates must be within -100000..=100000");
@@ -211,6 +266,8 @@ mod tests {
         for change in [
             "delay_ms = 0",
             "break_min_ms = 2000\nbreak_max_ms = 100",
+            "pause_every_min_ms = 2000\npause_every_max_ms = 100",
+            "ui_scale_percent = 10",
             "version = 2",
             "trigger_count = 0",
             "hotkey = 'Ctrl+Shift+F12'",

@@ -184,6 +184,21 @@ pub fn sample_ms(rng: &mut impl Rng, base: u64, jitter: u64, distribution: Distr
     (base as f64 + offset).round().max(1.0) as u64
 }
 
+fn ramped_ms(base: u64, config: &Config, started: Instant) -> u64 {
+    if config.ramp_up_ms == 0 {
+        return base;
+    }
+    let progress = started.elapsed().as_millis() as f64 / config.ramp_up_ms as f64;
+    let multiplier = (2.0 - progress.clamp(0.0, 1.0)).max(1.0);
+    (base as f64 * multiplier).round().max(1.0) as u64
+}
+
+fn moved_too_far(current: (i32, i32), anchor: (i32, i32), tolerance: u32) -> bool {
+    let dx = (current.0 - anchor.0) as i64;
+    let dy = (current.1 - anchor.1) as i64;
+    dx * dx + dy * dy > (tolerance as i64) * (tolerance as i64)
+}
+
 fn run_session<M: MouseOutput>(
     config: &Config,
     mouse: M,
@@ -197,6 +212,11 @@ fn run_session<M: MouseOutput>(
     control.deadline =
         (config.max_duration_s > 0).then(|| started + Duration::from_secs(config.max_duration_s));
     let jitter = |value| if config.randomize { value } else { 0 };
+    let cursor_anchor = if config.stop_on_cursor_move && !config.fixed_position {
+        Some(mouse.output.position()?)
+    } else {
+        None
+    };
     let mut clicks = 0;
     let result = (|| {
         'session: loop {
@@ -205,7 +225,17 @@ fn run_session<M: MouseOutput>(
                 if control.wait(Duration::ZERO) {
                     break 'session;
                 }
+                if let Some(anchor) = cursor_anchor {
+                    let position = mouse.output.position()?;
+                    if moved_too_far(position, anchor, config.cursor_move_tolerance_px) {
+                        break 'session;
+                    }
+                }
                 let restore_position = if config.fixed_position {
+                    let restore = config
+                        .restore_cursor_after_fixed
+                        .then(|| mouse.output.position())
+                        .transpose()?;
                     let radius = if config.randomize {
                         config.radius_px as i32
                     } else {
@@ -215,7 +245,7 @@ fn run_session<M: MouseOutput>(
                     let dx = rng.gen_range(-radius..=radius);
                     let dy = rng.gen_range(-radius..=radius);
                     mouse.output.move_to(config.x + dx, config.y + dy)?;
-                    None
+                    restore
                 } else if config.randomize && config.cursor_tremor && config.tremor_px > 0 {
                     let (x, y) = mouse.output.position()?;
                     let radius = config.tremor_px as i32;
@@ -247,10 +277,19 @@ fn run_session<M: MouseOutput>(
                 if interrupted || (config.max_clicks > 0 && clicks >= config.max_clicks) {
                     break 'session;
                 }
+                if config.pause_every_clicks > 0 && clicks % config.pause_every_clicks == 0 {
+                    shared.lock().unwrap().phase = Phase::Break;
+                    let pause =
+                        rng.gen_range(config.pause_every_min_ms..=config.pause_every_max_ms);
+                    if control.wait(Duration::from_millis(pause)) {
+                        break 'session;
+                    }
+                    shared.lock().unwrap().phase = Phase::Clicking;
+                }
                 if index + 1 < config.sequence_len() {
                     let interval = sample_ms(
                         &mut rng,
-                        config.burst_interval_ms,
+                        ramped_ms(config.burst_interval_ms, config, started),
                         jitter(config.burst_jitter_ms),
                         config.distribution,
                     );
@@ -269,7 +308,7 @@ fn run_session<M: MouseOutput>(
             }
             let delay = sample_ms(
                 &mut rng,
-                config.delay_ms,
+                ramped_ms(config.delay_ms, config, started),
                 jitter(config.delay_jitter_ms),
                 config.distribution,
             );
@@ -425,6 +464,32 @@ mod tests {
     }
 
     #[test]
+    fn fixed_position_can_restore_original_position() {
+        let (_tx, rx) = mpsc::channel();
+        let events = Arc::new(Mutex::new(vec![]));
+        let mouse = FakeMouse {
+            events: events.clone(),
+            cancel_on_press: None,
+            fail_press: false,
+        };
+        let config = Config {
+            fixed_position: true,
+            restore_cursor_after_fixed: true,
+            max_clicks: 1,
+            hold_ms: 1,
+            randomize: false,
+            ..Config::default()
+        };
+        let mut control = Control {
+            rx,
+            pending: None,
+            deadline: None,
+        };
+        run_session(&config, mouse, &mut control, &Mutex::new(Status::default())).unwrap();
+        assert_eq!(*events.lock().unwrap(), ["move", "down", "up", "move"]);
+    }
+
+    #[test]
     fn deadline_interrupts_wait_and_equal_break_bounds_work() {
         let (_tx, rx) = mpsc::channel();
         let mut control = Control {
@@ -433,6 +498,8 @@ mod tests {
             deadline: Some(Instant::now() + Duration::from_millis(10)),
         };
         assert!(control.wait(Duration::from_secs(60)));
+        assert!(moved_too_far((10, 0), (0, 0), 9));
+        assert!(!moved_too_far((10, 0), (0, 0), 10));
         let mut rng = StdRng::seed_from_u64(7);
         assert_eq!(rng.gen_range(200..=200), 200);
         for distribution in [Distribution::Uniform, Distribution::Normal] {
